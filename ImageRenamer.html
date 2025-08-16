@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ImageRenamer</title>
+  <style>
+    :root{
+      --bg: #0b0d12;
+      --panel: #12151c;
+      --muted: #96a1b3;
+      --text: #e7ecf3;
+      --accent: #7c5cff;
+      --accent-2: #3dd6ed;
+      --ok: #22c55e;
+      --warn: #f59e0b;
+      --err: #ef4444;
+      --radius: 16px;
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
+      background: radial-gradient(1200px 700px at 20% -10%, rgba(124,92,255,.15), transparent 40%),
+                  radial-gradient(1200px 700px at 120% 20%, rgba(61,214,237,.12), transparent 40%),
+                  var(--bg);
+      color:var(--text);
+    }
+    header{
+      padding:24px; display:flex; gap:16px; align-items:center; justify-content:space-between; flex-wrap:wrap;
+    }
+    .brand{display:flex; gap:12px; align-items:center}
+    .logo{
+      width:36px; height:36px; display:grid; place-items:center; border-radius:12px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      box-shadow: var(--shadow);
+      font-weight:800;
+    }
+    h1{font-size:20px; margin:0}
+    .container{max-width:1100px; margin:0 auto; padding:0 24px 48px}
+
+    .panel{
+      background:linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01));
+      border:1px solid rgba(255,255,255,.08);
+      backdrop-filter: blur(6px);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .dropzone{
+      padding:28px; text-align:center; border:2px dashed rgba(255,255,255,.18);
+      border-radius: var(--radius);
+      cursor:pointer; transition:.2s ease; outline:none;
+    }
+    .dropzone:hover{border-color: var(--accent)}
+    .dropzone input{display:none}
+    .dz-hint{color:var(--muted); font-size:14px}
+
+    .controls{display:grid; grid-template-columns: repeat(6, minmax(0,1fr)); gap:12px; padding:16px}
+    .control{display:flex; flex-direction:column; gap:6px}
+    label{font-size:12px; color: var(--muted)}
+    input[type="text"], input[type="number"], select{
+      background:#0f1218; border:1px solid rgba(255,255,255,.12); color:var(--text);
+      border-radius:10px; padding:10px 12px; outline:none; transition:.15s ease;
+    }
+    input:focus, select:focus{border-color:var(--accent)}
+
+    .buttons{display:flex; flex-wrap:wrap; gap:10px; padding:16px; border-top:1px solid rgba(255,255,255,.06);}
+    button{
+      border:0; padding:10px 14px; border-radius:12px; cursor:pointer; font-weight:600; transition:.15s ease;
+      background:#1a1f2a; color:var(--text); border:1px solid rgba(255,255,255,.1)
+    }
+    button.primary{background: linear-gradient(135deg, var(--accent), var(--accent-2)); border-color: transparent;}
+    button.primary:disabled{opacity:.6; cursor:not-allowed}
+    button.ghost{background:transparent}
+
+    .grid{display:grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap:12px; padding:16px}
+    .card{position:relative; overflow:hidden; border-radius:14px; background:#0f1218; border:1px solid rgba(255,255,255,.08)}
+    .thumb{width:100%; aspect-ratio: 4 / 3; object-fit:cover; display:block}
+    .meta{display:flex; justify-content:space-between; gap:8px; padding:8px 10px; font-size:12px; color:var(--muted)}
+    .badge{position:absolute; top:8px; left:8px; background:rgba(0,0,0,.55); padding:4px 8px; border-radius:10px; font-size:12px}
+
+    .footer{padding:16px; color:var(--muted); font-size:12px; text-align:center}
+    .hidden{display:none}
+    .flex{display:flex; align-items:center; gap:10px}
+    .spacer{flex:1}
+    .progress{height:8px; background:#0f1218; border:1px solid rgba(255,255,255,.08); border-radius:10px; overflow:hidden}
+    .progress > div{height:100%; width:0%}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <div class="logo">IR</div>
+      <h1>Image Renamer</h1>
+    </div>
+    <div class="flex">
+      <span class="dz-hint">Works 100% in browser • No upload</span>
+    </div>
+  </header>
+
+  <div class="container">
+    <section class="panel" id="uploader">
+      <label class="dropzone" id="dropzone">
+        <input id="fileInput" type="file" accept="image/*" multiple />
+        <div style="font-size:18px; margin-bottom:6px">Drop images here or click to select</div>
+        <div class="dz-hint">PNG • JPG • JPEG • GIF • WebP • BMP • HEIC (if browser supports)</div>
+      </label>
+
+      <div class="controls">
+        <div class="control">
+          <label for="prefix">File name prefix</label>
+          <input id="prefix" type="text" value="img_" />
+        </div>
+        <div class="control">
+          <label for="start">Start number</label>
+          <input id="start" type="number" value="1" min="0" />
+        </div>
+        <div class="control">
+          <label for="pad">Zero padding (e.g. 3 → 001)</label>
+          <input id="pad" type="number" value="0" min="0" max="8" />
+        </div>
+        <div class="control">
+          <label for="sort">Order by</label>
+          <select id="sort">
+            <option value="name">Name (A→Z)</option>
+            <option value="date">Date (oldest→newest)</option>
+            <option value="size">Size (small→large)</option>
+            <option value="manual">Manual (as picked)</option>
+          </select>
+        </div>
+        <div class="control">
+          <label for="extMode">Extension</label>
+          <select id="extMode">
+            <option value="keep">Keep original</option>
+            <option value="lower">Lowercase</option>
+            <option value="upper">Uppercase</option>
+          </select>
+        </div>
+        <div class="control">
+          <label for="previewToggle">Preview thumbnails</label>
+          <select id="previewToggle">
+            <option value="on">On</option>
+            <option value="off">Off</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="buttons">
+        <button id="clearBtn" class="ghost">Clear</button>
+        <div class="spacer"></div>
+        <div class="flex" style="gap:8px">
+          <div class="progress hidden" id="progress"><div></div></div>
+          <button id="zipBtn" class="primary" disabled>Rename & Download ZIP</button>
+        </div>
+      </div>
+
+      <div id="grid" class="grid"></div>
+      <div class="footer">Maintains original quality by renaming files without re-encoding. Zipped locally using the "stored" method (no compression).</div>
+    </section>
+  </div>
+
+  <script>
+    // ---------- Utilities ----------
+    const $ = sel => document.querySelector(sel);
+    const grid = $('#grid');
+    const fileInput = $('#fileInput');
+    const dropzone = $('#dropzone');
+    const prefixEl = $('#prefix');
+    const startEl = $('#start');
+    const padEl = $('#pad');
+    const sortEl = $('#sort');
+    const extModeEl = $('#extMode');
+    const previewToggle = $('#previewToggle');
+    const zipBtn = $('#zipBtn');
+    const clearBtn = $('#clearBtn');
+    const progressBar = $('#progress');
+
+    let items = []; // {file, name, size, lastModified, url}
+
+    function fmtBytes(b){
+      if(b < 1024) return b + ' B';
+      const units = ['KB','MB','GB'];
+      let i= -1; do{ b = b/1024; i++; } while(b>=1024 && i<units.length-1);
+      return b.toFixed(1)+' '+units[i];
+    }
+
+    function extOf(name){
+      const i = name.lastIndexOf('.');
+      return i>=0 ? name.slice(i) : '';
+    }
+
+    function normalizeExt(ext, mode){
+      if(mode==='lower') return ext.toLowerCase();
+      if(mode==='upper') return ext.toUpperCase();
+      return ext; // keep
+    }
+
+    function render(){
+      grid.innerHTML = '';
+      const showPreview = previewToggle.value === 'on';
+      items.forEach((it, idx)=>{
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.draggable = true;
+        card.dataset.index = idx;
+        const img = document.createElement(showPreview? 'img':'div');
+        if(showPreview){
+          img.className = 'thumb';
+          img.src = it.url;
+          img.alt = it.file.name;
+          img.loading = 'lazy';
+        }else{
+          img.style.height='8px';
+        }
+        const badge = document.createElement('div');
+        badge.className = 'badge';
+        badge.textContent = idx+1;
+        const meta = document.createElement('div');
+        meta.className = 'meta';
+        const left = document.createElement('div');
+        left.textContent = it.file.name;
+        const right = document.createElement('div');
+        right.textContent = fmtBytes(it.file.size);
+        meta.append(left, right);
+        card.append(img, badge, meta);
+        grid.append(card);
+      });
+    }
+
+    function sortItems(){
+      const mode = sortEl.value;
+      if(mode==='name') items.sort((a,b)=> a.file.name.localeCompare(b.file.name));
+      if(mode==='date') items.sort((a,b)=> a.file.lastModified - b.file.lastModified);
+      if(mode==='size') items.sort((a,b)=> a.file.size - b.file.size);
+      // manual: keep order
+      render();
+    }
+
+    function setProgress(p){
+      if(p==null){
+        progressBar.classList.add('hidden');
+        progressBar.firstElementChild.style.width = '0%';
+      }else{
+        progressBar.classList.remove('hidden');
+        progressBar.firstElementChild.style.width = Math.max(0, Math.min(100, p*100))+'%';
+        progressBar.firstElementChild.style.background = `linear-gradient(90deg, var(--accent), var(--accent-2))`;
+      }
+    }
+
+    // Drag & drop
+    dropzone.addEventListener('click', ()=> fileInput.click());
+    dropzone.addEventListener('dragover', e=>{ e.preventDefault(); dropzone.style.borderColor = 'var(--accent)'; });
+    dropzone.addEventListener('dragleave', ()=> dropzone.style.borderColor = 'rgba(255,255,255,.18)');
+    dropzone.addEventListener('drop', e=>{
+      e.preventDefault(); dropzone.style.borderColor = 'rgba(255,255,255,.18)';
+      handleFiles(e.dataTransfer.files);
+    });
+    fileInput.addEventListener('change', e=> handleFiles(e.target.files));
+
+    function handleFiles(fileList){
+      const arr = Array.from(fileList || []).filter(f=> f && f.type.startsWith('image/'));
+      for(const f of arr){
+        const url = URL.createObjectURL(f);
+        items.push({file: f, url});
+      }
+      if(items.length){ zipBtn.disabled = false; }
+      sortItems();
+    }
+
+    clearBtn.addEventListener('click', ()=>{
+      items.forEach(i=> URL.revokeObjectURL(i.url));
+      items = []; grid.innerHTML = ''; zipBtn.disabled = true; setProgress(null);
+    });
+
+    sortEl.addEventListener('change', sortItems);
+    previewToggle.addEventListener('change', render);
+
+    // Drag to reorder when in manual mode
+    grid.addEventListener('dragstart', e=>{
+      if(sortEl.value !== 'manual') return e.preventDefault();
+      if(!e.target.closest('.card')) return;
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', e.target.closest('.card').dataset.index);
+    });
+    grid.addEventListener('dragover', e=>{
+      if(sortEl.value !== 'manual') return;
+      e.preventDefault();
+      const over = e.target.closest('.card');
+      if(!over) return;
+    });
+    grid.addEventListener('drop', e=>{
+      if(sortEl.value !== 'manual') return;
+      e.preventDefault();
+      const from = +e.dataTransfer.getData('text/plain');
+      const overCard = e.target.closest('.card');
+      if(!overCard) return;
+      const to = +overCard.dataset.index;
+      if(Number.isNaN(from) || Number.isNaN(to) || from===to) return;
+      const [moved] = items.splice(from,1);
+      items.splice(to,0,moved);
+      render();
+    });
+
+    // ---------- ZIP (Stored, no compression) ----------
+    // CRC32 table
+    const CRC_TABLE = (()=>{
+      const t = new Uint32Array(256);
+      for (let i=0; i<256; i++){
+        let c = i;
+        for(let j=0;j<8;j++) c = (c & 1) ? (0xEDB88320 ^ (c>>>1)) : (c>>>1);
+        t[i]=c>>>0;
+      }
+      return t;
+    })();
+    function crc32(u8){
+      let c = 0xFFFFFFFF;
+      for(let i=0;i<u8.length;i++) c = CRC_TABLE[(c ^ u8[i]) & 0xFF] ^ (c>>>8);
+      return (c ^ 0xFFFFFFFF) >>> 0;
+    }
+
+    function dosTimeDate(ms){
+      const d = new Date(ms);
+      const year = d.getFullYear();
+      const dosDate = ((year-1980)<<9) | ((d.getMonth()+1)<<5) | d.getDate();
+      const dosTime = (d.getHours()<<11) | (d.getMinutes()<<5) | (Math.floor(d.getSeconds()/2));
+      return {dosTime, dosDate};
+    }
+
+    function u16(n){ const b = new Uint8Array(2); const v = new DataView(b.buffer); v.setUint16(0,n,true); return b; }
+    function u32(n){ const b = new Uint8Array(4); const v = new DataView(b.buffer); v.setUint32(0,n,true); return b; }
+
+    function encodeUTF8(str){ return new TextEncoder().encode(str); }
+
+    async function makeZipStored(entries){
+      // entries: [{name, data(Uint8Array), mtime(ms)}]
+      const files = entries;
+      const parts = []; // push Uint8Arrays
+      const central = [];
+      let offset = 0;
+
+      for(const f of files){
+        const {dosTime, dosDate} = dosTimeDate(f.mtime || Date.now());
+        const nameBytes = encodeUTF8(f.name);
+        const localHeader = [
+          u32(0x04034b50), // local sig
+          u16(20),         // version needed
+          u16(0x0800),     // flags: UTF-8
+          u16(0),          // compression = stored
+          u16(dosTime),    // mod time
+          u16(dosDate),    // mod date
+          u32(f.crc),
+          u32(f.data.length),
+          u32(f.data.length),
+          u16(nameBytes.length),
+          u16(0)           // extra len
+        ];
+        parts.push(...localHeader, nameBytes, f.data);
+        const localHeaderSize = localHeader.reduce((s,b)=> s+b.length, 0) + nameBytes.length;
+        const thisOffset = offset;
+        offset += localHeaderSize + f.data.length;
+
+        const centralHeader = [
+          u32(0x02014b50), // central sig
+          u16(20), u16(20),
+          u16(0x0800),
+          u16(0),
+          u16(dosTime), u16(dosDate),
+          u32(f.crc), u32(f.data.length), u32(f.data.length),
+          u16(nameBytes.length), u16(0), u16(0),
+          u16(0), u16(0),
+          u32(0), // external attrs
+          u32(thisOffset)
+        ];
+        central.push(...centralHeader, nameBytes);
+      }
+
+      const centralSize = central.reduce((s,b)=> s+b.length, 0);
+      const centralOffset = offset;
+      const end = [
+        u32(0x06054b50),
+        u16(0), u16(0),
+        u16(files.length), u16(files.length),
+        u32(centralSize),
+        u32(centralOffset),
+        u16(0)
+      ];
+
+      const totalParts = [...parts, ...central, ...end];
+      const totalSize = totalParts.reduce((s,b)=> s + b.length, 0);
+      const out = new Uint8Array(totalSize);
+      let pos = 0;
+      for(const seg of totalParts){ out.set(seg, pos); pos += seg.length; }
+      return new Blob([out], {type: 'application/zip'});
+    }
+
+    zipBtn.addEventListener('click', async ()=>{
+      if(!items.length) return;
+
+      // build new names
+      const start = parseInt(startEl.value || '1', 10);
+      const pad = Math.max(0, Math.min(8, parseInt(padEl.value || '0', 10)));
+      const prefix = prefixEl.value || '';
+      const extMode = extModeEl.value;
+
+      setProgress(0);
+
+      // Read all data first to compute CRCs
+      const files = [];
+      for(let i=0;i<items.length;i++){
+        const it = items[i];
+        const ab = await it.file.arrayBuffer();
+        const u8 = new Uint8Array(ab);
+        const crc = crc32(u8);
+        const n = start + i;
+        const ext = normalizeExt(extOf(it.file.name), extMode);
+        const num = pad > 0 ? String(n).padStart(pad, '0') : String(n);
+        const newName = `${prefix}${num}${ext || ''}`;
+        files.push({ name: newName, data: u8, crc, mtime: it.file.lastModified });
+        setProgress((i+1) / (items.length + 1));
+      }
+
+      const zipBlob = await makeZipStored(files);
+      setProgress(1);
+
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(zipBlob);
+      const safePrefix = (prefix || 'images').replace(/[^a-z0-9_\-]+/gi,'_').slice(0,40) || 'images';
+      a.download = `${safePrefix}_renamed.zip`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(()=>{ URL.revokeObjectURL(a.href); setProgress(null); }, 2000);
+    });
+  </script>
+</body>
+</html>
